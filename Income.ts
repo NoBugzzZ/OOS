@@ -31,7 +31,7 @@ class Income extends Base {
   do(): void {
     this.constraints.forEach((constraint) => {
       const { source, target, result } = constraint;
-      (this as any)[target] = result();
+      (this as any)[target] = result(...source.map(s=>(this as any)[s]));
     });
     emmiter.emit("Income");
   }
