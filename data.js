@@ -2,15 +2,15 @@ const Income = {
   type: "object",
   title: "Income",
   properties: {
-    total: {
-      type: "integer",
-      formula: "SUM(Item.value)",
-    },
     items: {
       type: "array",
       items: {
         $ref: "#/$defs/Item",
       },
+    },
+    total: {
+      type: "integer",
+      formula: "SUM(Item.value)",
     },
   },
   $defs: {
@@ -27,4 +27,6 @@ const Income = {
   },
 };
 
-export {Income}
+module.exports={
+  Income
+}
