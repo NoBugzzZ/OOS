@@ -48,7 +48,16 @@ function traverse(schema, root, $defs) {
       // traverse(items, root, $defs, refs);
     }
   } else if (schema.hasOwnProperty("$ref")) {
-
+    if (!(root.hasOwnProperty("_refs"))) {
+      root["_refs"] = [];
+    }
+    root["_refs"].push({ type: "object", ref: schema["$ref"] });
+    const refSchema = resolveRef($defs, schema["$ref"]);
+    const { properties } = refSchema;
+    const data = {};
+    for (let key of Object.keys(properties)) {
+      data[key] = traverse(properties[key], refSchema, $defs);
+    }
   } else {
     // return getDefault(type);
     if (schema.hasOwnProperty("formula")) {
@@ -170,50 +179,59 @@ function traverseForData(schema, root, $defs) {
     }
   }
 }
-const { Income } = require("./data")
-const schema = parser(Income);
-console.dir(schema, { depth: null });
-const data = parseData(schema);
-console.dir(data, { depth: null });
-data.items.push({ value: 2 });
-console.dir(data, { depth: null });
-data.items.push({ value: 3 });
-console.dir(data, { depth: null });
-data.items[0].value = 1
-console.dir(data, { depth: null });
-// data.items.splice(2)
-// console.dir(data, { depth: null });
 
-function toSpreadSheet(data, direction = "vertical") {
-  const spreedsheet = [];
-  for (let key of Object.keys(data)) {
-    const label = [{ value: key }]
-    spreedsheet.push(label)
-    if (!Array.isArray(data[key])) {
-      const cell = [{ value: data[key] }]
-      spreedsheet.push(cell)
-    } else {
-      // console.log(data[key])
-      data[key].forEach(d => {
-        const cell = [];
-        for (let k of Object.keys(d)) {
-          cell.push({ value: d[k] ,
-            insert:()=>{data[key].push({value:0})},
-            update:(value)=>{d[k]=value},
-          })
-        }
-        spreedsheet.push(cell)
-      })
-
-    }
-  }
-  return spreedsheet;
+{
+  const { Account } = require("./data");
+  const schema = parser(Account);
+  console.dir(schema, { depth: null });
+  const data = parseData(schema);
+  console.dir(data, { depth: null })
 }
 
-const spreadsheet=toSpreadSheet(data)
+// {
+//   const { Income } = require("./data")
+//   const schema = parser(Income);
+//   console.dir(schema, { depth: null });
+//   const data = parseData(schema);
+//   console.dir(data, { depth: null });
+//   data.items.push({ value: 2 });
+//   console.dir(data, { depth: null });
+//   data.items.push({ value: 3 });
+//   console.dir(data, { depth: null });
+//   data.items[0].value = 1
+//   console.dir(data, { depth: null });
+// }
 
-console.dir(spreadsheet, { depth: null })
+// function toSpreadSheet(data, direction = "vertical") {
+//   const spreedsheet = [];
+//   for (let key of Object.keys(data)) {
+//     const label = [{ value: key }]
+//     spreedsheet.push(label)
+//     if (!Array.isArray(data[key])) {
+//       const cell = [{ value: data[key] }]
+//       spreedsheet.push(cell)
+//     } else {
+//       // console.log(data[key])
+//       data[key].forEach(d => {
+//         const cell = [];
+//         for (let k of Object.keys(d)) {
+//           cell.push({ value: d[k] ,
+//             insert:()=>{data[key].push({value:0})},
+//             update:(value)=>{d[k]=value},
+//           })
+//         }
+//         spreedsheet.push(cell)
+//       })
 
-spreadsheet[1][0].update(5);
+//     }
+//   }
+//   return spreedsheet;
+// }
 
-console.dir(toSpreadSheet(data), { depth: null })
+// const spreadsheet=toSpreadSheet(data)
+
+// console.dir(spreadsheet, { depth: null })
+
+// spreadsheet[1][0].update(5);
+
+// console.dir(toSpreadSheet(data), { depth: null })
