@@ -132,7 +132,8 @@ function traverseForData(schema, root, $defs) {
     }
     return data;
   } else if (schema.hasOwnProperty("$ref")) {
-
+    const refSchema=resolveRef($defs,schema["$ref"]);
+    return traverseForData(refSchema,root,$defs);
   } else if (type === "array") {
     const { items } = schema;
     if (items.hasOwnProperty("$ref")) {
