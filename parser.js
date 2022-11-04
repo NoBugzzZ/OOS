@@ -1,12 +1,7 @@
-function parser(schema) {
-  const { type, title, properties, $defs } = schema;
-  const data = {};
-  for (let key of Object.keys(properties)) {
-    data[key] = traverse(properties[key], schema, $defs);
-  }
-  return schema;
-}
-const getDefault = (type) => {
+const { EventEmitter } = require('./Event')
+const { Formula } = require("./Function");
+
+function getDefault(type) {
   const mapper = {
     "integer": 0,
     "number": 0.0,
@@ -16,15 +11,29 @@ const getDefault = (type) => {
   }
   return mapper[type];
 }
-const getBasicType = () => {
+
+function getBasicType() {
   return ["integer", "number", "string", "boolean", "null"]
 }
+
 function resolveRef($defs, ref = "") {
   if (ref.startsWith("#/$defs/")) {
     const s = ref.split("/");
     return $defs[s[2]];
   }
 }
+
+function parser(schema) {
+  const { type, title, properties, $defs } = schema;
+  const data = {};
+  const event = new EventEmitter(title);
+  schema["_event"] = event;
+  for (let key of Object.keys(properties)) {
+    data[key] = traverse(properties[key], schema, $defs);
+  }
+  return schema;
+}
+
 function traverse(schema, root, $defs) {
   // console.dir({ schema, root, $defs })
   const { type } = schema;
@@ -69,11 +78,6 @@ function traverse(schema, root, $defs) {
   }
 }
 
-function parseData(schema) {
-  const { $defs } = schema;
-  return traverseForData(schema, schema, $defs);
-}
-
 function resolveFormula(formula = "") {
   // console.log("###",formula)
   const start = formula.indexOf("(");
@@ -83,15 +87,13 @@ function resolveFormula(formula = "") {
   return [func, param];
 }
 
-const { EventEmitter } = require('./Event')
-const event = new EventEmitter();
-const { Formula } = require("./Function");
 function resolveRefName(ref) {
   if (ref.startsWith("#/$defs/")) {
     const s = ref.split("/");
     return s[2];
   }
 }
+
 function observe(obj) {
   return new Proxy(obj, {
     get(target, p, receiver) {
@@ -104,11 +106,19 @@ function observe(obj) {
     }
   })
 }
-function traverseForData(schema, root, $defs) {
+
+function parseData(schema) {
+  const { $defs, _event } = schema;
+  return traverseForData(schema, schema, $defs, _event, "");
+}
+
+function traverseForData(schema, root, $defs, event, parentPath) {
   const { type } = schema;
   if (type === "object") {
-    const { properties } = schema;
+    const { properties, title = "root" } = schema;
+    const currentPath = parentPath + title;
     const data = {};
+    data["_path"] = currentPath;
     const basicType = getBasicType();
     for (let key of Object.keys(properties)) {
       const property = properties[key];
@@ -127,13 +137,13 @@ function traverseForData(schema, root, $defs) {
           }
         }
       } else {
-        data[key] = traverseForData(properties[key], root, $defs);
+        data[key] = traverseForData(properties[key], root, $defs, event, `${data["_path"]}.`);
       }
     }
     return data;
   } else if (schema.hasOwnProperty("$ref")) {
-    const refSchema=resolveRef($defs,schema["$ref"]);
-    return traverseForData(refSchema,root,$defs);
+    const refSchema = resolveRef($defs, schema["$ref"]);
+    return traverseForData(refSchema, root, $defs, event, parentPath);
   } else if (type === "array") {
     const { items } = schema;
     if (items.hasOwnProperty("$ref")) {
@@ -173,7 +183,7 @@ function traverseForData(schema, root, $defs) {
           })
         }
       })
-      data.push(traverseForData(refSchema, refSchema, $defs));
+      data.push(traverseForData(refSchema, refSchema, $defs, event, `${parentPath}[]`));
       return data
     } else {
       // traverse(items, root, $defs, refs);
