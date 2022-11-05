@@ -130,7 +130,7 @@ function traverseForData(schema, root, $defs, event, parentPath) {
           if (formulaPattern.test(formula)) {
             const [func, param] = resolveFormula(formula);
             // console.log(func, param);
-            event.on(param[0], (...params) => {
+            event.on(`${data["_path"]}.${param[0]}`, (...params) => {
               // console.log(Formula,func,params)
               data[key] = Formula[func](...params);
             });
@@ -163,14 +163,14 @@ function traverseForData(schema, root, $defs, event, parentPath) {
               const res = Reflect.set(target, p, newValue, receiver);
               if (p === "length") {
                 // console.log("set", p, newValue, data);
-                event.emit(param[0], data, param[1]);
+                event.emit(`${parentPath}${param[0]}`, data, param[1]);
                 const len = data.length
                 if (prev === len) {
                   console.log("push", len)
                   data[len - 1] = new Proxy(data[len - 1], {
                     set(target, p, newValue, receiver) {
                       const res = Reflect.set(target, p, newValue, receiver);
-                      event.emit(param[0], data, param[1]);
+                      event.emit(`${parentPath}${param[0]}`, data, param[1]);
                       return res;
                     }
                   })
@@ -183,7 +183,7 @@ function traverseForData(schema, root, $defs, event, parentPath) {
           })
         }
       })
-      data.push(traverseForData(refSchema, refSchema, $defs, event, `${parentPath}[]`));
+      data.push(traverseForData(refSchema, refSchema, $defs, event, `${parentPath}[].`));
       return data
     } else {
       // traverse(items, root, $defs, refs);
@@ -194,8 +194,8 @@ function traverseForData(schema, root, $defs, event, parentPath) {
 {
   const { Account } = require("./data");
   const schema = parser(Account);
-  console.dir(schema, { depth: null });
   const data = parseData(schema);
+  console.dir(schema, { depth: null });
   console.dir(data, { depth: null })
 }
 
